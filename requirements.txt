@@ -1,0 +1,8 @@
+asn1crypto==1.4.0
+certifi==2020.6.20
+chardet==4.0.0
+idna==2.10
+macholibre @ git+https://github.com/aaronst/macholibre.git@c019c079a9e324e9f8e549a372406a12ddbc2a04
+requests==2.25.1
+urllib3==1.26.3
+virustotal3==1.0.8
