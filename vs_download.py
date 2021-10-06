@@ -4,7 +4,6 @@ from time import sleep
 base_url = "https://virusshare.com/apiv2/<request>?apikey=<apikey>&hash=<hash_string>"
 hashes_file = "malwareids.txt"
 download_dir = "/Users/kimo/OneDrive/Documents/Research/Dissertation/Malware/virusshare"
-apikey = "5RBOEZvxWYn4IsyQn1QYTYDhgeu96oo9"
 
 def download_file(filename: str):
 	hash = filename.split("/")[-1]
@@ -14,7 +13,7 @@ def download_file(filename: str):
 	r = requests.get(url)
 	with open(filename, "wb") as f:
 		f.write(r.content)
-	
+
 def check_if_downloaded(filename: str):
 	if os.path.isfile(filename):
 		return True
@@ -26,9 +25,9 @@ def read_file(file):
 		hashes = f.readlines()
 	return hashes
 
-if not os.path.isdir(download_dir):	
+if not os.path.isdir(download_dir):
 	os.mkdir(download_dir)
-	
+
 hashes = read_file(hashes_file)
 
 for malware_hash in hashes:
@@ -42,4 +41,4 @@ for malware_hash in hashes:
 		download_file(malware_file)
 		print("Download finished")
 		sleep(15)
-	
+
