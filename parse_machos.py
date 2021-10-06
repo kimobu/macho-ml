@@ -10,6 +10,7 @@ import os
 import json
 from macholibre import parse
 from tqdm import tqdm
+from threading import Thread
 
 parser = argparse.ArgumentParser(
     description="Search a filesystem for Mach-O files and parse them to JSON objects."
@@ -120,10 +121,12 @@ def extractZipLists(file_list: list):
     """
     for filegroup in file_list:
         for filename in file_list["zips"]:
-            unzipFile(filename)
+            new_thread = Thread(target=unzipFile, args=(filename,))
+            new_thread.start()
             file_list["zips"].remove(filename)
         for filename in file_list["7zips"]:
-            un7zipFile(filename)
+            new_thread = Thread(target=un7zipFile, args=(filename,))
+            new_thread.start()
             file_list["7zips"].remove(filename)
 
 
@@ -155,7 +158,7 @@ if __name__ == "__main__":
         len(file_list["machos"]) + len(file_list["zips"]) + len(file_list["7zips"])
     )
     print("Found {0} files".format(total_files))
-    # extractZipLists(file_list)
+    extractZipLists(file_list)
     getFiles(args.tmpdir, file_list)
     print("Total malware: {0}".format(len(file_list["machos"])))
     parseFiles(file_list)

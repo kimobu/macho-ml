@@ -73,7 +73,6 @@ def parse_json(data: object):
     mach["nlcs"] = data["macho"]["nlcs"]
     mach["slcs"] = data["macho"]["slcs"]
     mach["flags"] = data["macho"]["flags"]
-    mach["load_commands"] = []
     for load_command in data["macho"]["lcs"]:
         lc_type = load_command["cmd"]
         if lc_type == "SEGMENT" or lc_type == "SEGMENT_64":
