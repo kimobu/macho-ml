@@ -8,6 +8,9 @@ import zipfile
 import magic
 import os
 import json
+import sys
+import math
+import subprocess
 from macholibre import parse
 from tqdm import tqdm
 from threading import Thread
@@ -43,6 +46,26 @@ if not os.path.isdir(args.tmpdir):
     os.mkdir(args.tmpdir)
 if not os.path.isdir(args.outdir):
     os.mkdir(args.outdir)
+
+
+def calculateEntropy(filename: str) -> float:
+    with open(filename, "rb") as f:
+        byteArray = f.read()
+        filesize = len(byteArray)
+        freqList = []
+        for b in range(256):
+            ctr = 0
+            for byte in byteArray:
+                if byte == b:
+                    ctr += 1
+            freqList.append(float(ctr) / filesize)
+        # Shannon entropy
+        ent = 0.0
+        for freq in freqList:
+            if freq > 0:
+                ent = ent + freq * math.log(freq, 2)
+        ent = -ent
+        return ent
 
 
 def getFiletype(filename: str) -> str:
@@ -130,22 +153,48 @@ def extractZipLists(file_list: list):
             file_list["7zips"].remove(filename)
 
 
-def parseFiles(file_list: list):
+def pack_file(filename: str, sha256: str):
+    """
+    Call subprocess to execute UPX and pack a valid Mach-o
+    Argument: The filename to pack
+    """
+    basename = f"{sha256}.packed"
+    out_file = os.path.join(args.outdir, basename)
+    cmd = ["upx", filename, "-k", f"-o{out_file}"]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    fout, ferr = process.communicate()
+    if not ferr:
+        return out_file
+    else:
+        return False
+
+
+def parseFile(filename: str):
     """
     Iterate the list of Mach-Os and call macholibre.parse against each file
     Argument: the list of lists with Mach-O files
     """
-    for filename in tqdm(file_list["machos"], bar_format="{l_bar}{bar}"):
-        json_file = os.path.basename(filename) + ".json"
-        out_file = os.path.join(args.outdir, json_file)
-        try:
-            print(f"[ ] Parsing {filename}")
-            data = parse(filename)
-            data["filepath"] = filename
+    try:
+        print(f"[ ] Parsing {filename}")
+        data = parse(filename)
+        data["filepath"] = filename
+        data["entropy"] = calculateEntropy(filename)
+        sha256 = data["hashes"]["sha256"]
+        packed = pack_file(filename, sha256)
+        if packed:
+            basename = sha256 + ".json"
+            out_file = os.path.join(args.outdir, basename)
             with open(out_file, "w") as f:
                 f.write(json.dumps(data))
-        except:
-            print(f"[-] Failed to parse {filename}")
+            datap = parse(packed)
+            datap["filepath"] = packed
+            datap["entropy"] = calculateEntropy(packed)
+            basenamep = sha256 + ".packed.json"
+            out_filep = os.path.join(args.outdir, basenamep)
+            with open(out_filep, "w") as f:
+                f.write(json.dumps(datap))
+    except Exception as e:
+        print(f"[-] Failed to parse {filename}: {e}")
 
 
 if __name__ == "__main__":
@@ -158,7 +207,10 @@ if __name__ == "__main__":
         len(file_list["machos"]) + len(file_list["zips"]) + len(file_list["7zips"])
     )
     print("Found {0} files".format(total_files))
-    extractZipLists(file_list)
+    # extractZipLists(file_list)
     getFiles(args.tmpdir, file_list)
     print("Total malware: {0}".format(len(file_list["machos"])))
-    parseFiles(file_list)
+
+    for filename in tqdm(file_list["machos"], bar_format="{l_bar}{bar}"):
+        new_thread = Thread(target=parseFile, args=(filename,))
+        new_thread.start()
