@@ -11,6 +11,7 @@ import json
 import sys
 import math
 import subprocess
+import vt-py
 from macholibre import parse
 from tqdm import tqdm
 from threading import Thread
@@ -180,6 +181,8 @@ def parseFile(filename: str):
         data["filepath"] = filename
         data["entropy"] = calculateEntropy(filename)
         sha256 = data["hashes"]["sha256"]
+        vtresults = client.get_object(f"/files/{sha256}")
+        data["vtresults"] = vtresults
         packed = pack_file(filename, sha256)
         if packed:
             basename = sha256 + ".json"
@@ -189,6 +192,7 @@ def parseFile(filename: str):
             datap = parse(packed)
             datap["filepath"] = packed
             datap["entropy"] = calculateEntropy(packed)
+            datap["vtresults"] = vtresults
             basenamep = sha256 + ".packed.json"
             out_filep = os.path.join(args.outdir, basenamep)
             with open(out_filep, "w") as f:
@@ -198,6 +202,7 @@ def parseFile(filename: str):
 
 
 if __name__ == "__main__":
+    client = vt.Client("")
     file_list = {}
     file_list["machos"] = []
     file_list["zips"] = []
